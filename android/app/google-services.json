@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1056489916400",
+    "project_id": "fox-link-app",
+    "storage_bucket": "fox-link-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1056489916400:android:d8eb5b59bd8491a7e1ff35",
+        "android_client_info": {
+          "package_name": "com.example.foxlink_solution"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKl7IEEWqPqx1SfefYHThERqqRot1VC0M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
