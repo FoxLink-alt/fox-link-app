@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # foxlink_solution
 
 A new Flutter project.
@@ -14,3 +15,6 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+# fox-link-app
+>>>>>>> c739e24c199f5cc549cfccbd68e7ccd92884eee7
