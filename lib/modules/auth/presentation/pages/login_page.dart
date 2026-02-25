@@ -128,7 +128,7 @@ class _LoginPageState extends State<LoginPage> {
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const ClientDashboard()),
+        MaterialPageRoute(builder: (_) =>  ClientDashboard()),
       );
     }
   }
