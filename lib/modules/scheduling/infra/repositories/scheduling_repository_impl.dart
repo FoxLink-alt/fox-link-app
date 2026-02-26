@@ -1,83 +1,133 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fox_link_app/core/database/tenant_firestore.dart';
+
 import '../../domain/entities/appointment.dart';
 import '../../domain/repositories/scheduling_repository.dart';
+import '../models/appointment_model.dart';
 
-class SchedulingRepositoryImpl implements SchedulingRepository {
-  final FirebaseFirestore firestore;
+class SchedulingRepositoryImpl
+    implements SchedulingRepository {
+
+  final TenantFirestore firestore;
 
   SchedulingRepositoryImpl(this.firestore);
 
   @override
-  Future<void> createAppointment(Appointment appointment) async {
+  Future<void> create(Appointment appointment) async {
+    final model = AppointmentModel.fromEntity(appointment);
+
     await firestore
         .collection('appointments')
-        .doc(appointment.id)
-        .set({
-      'tenantId': appointment.tenantId,
-      'serviceId': appointment.serviceId,
-      'clientId': appointment.clientId,
-      'professionalId': appointment.professionalId,
-      'scheduledStart': appointment.scheduledStart,
-      'scheduledEnd': appointment.scheduledEnd,
-      'finalPrice': appointment.finalPrice,
-      'finalDuration': appointment.finalDuration,
-      'status': appointment.status.name,
-      'createdAt': appointment.createdAt,
+        .doc(model.id)
+        .set(model.toMap());
+  }
+
+  @override
+  Future<void> updateStatus(
+      String appointmentId,
+      AppointmentStatus status,
+      ) async {
+    await firestore
+        .collection('appointments')
+        .doc(appointmentId)
+        .update({
+      'status': status.name,
     });
   }
 
   @override
-  Future<List<Appointment>> getApprovedAppointments({
+  Future<List<Appointment>>
+  getApprovedByProfessionalAndDate({
     required String professionalId,
     required DateTime date,
   }) async {
+
     final startOfDay =
     DateTime(date.year, date.month, date.day);
+
     final endOfDay =
-    DateTime(date.year, date.month, date.day, 23, 59, 59);
+    startOfDay.add(const Duration(days: 1));
 
     final snapshot = await firestore
         .collection('appointments')
-        .where('professionalId', isEqualTo: professionalId)
-        .where('status', isEqualTo: 'approved')
-        .where('scheduledStart', isGreaterThanOrEqualTo: startOfDay)
-        .where('scheduledStart', isLessThanOrEqualTo: endOfDay)
+        .where('professionalId',
+        isEqualTo: professionalId)
+        .where('status',
+        isEqualTo:
+        AppointmentStatus.approved.name)
+        .where('scheduledStart',
+        isGreaterThanOrEqualTo:
+        startOfDay)
+        .where('scheduledStart',
+        isLessThan: endOfDay)
         .get();
 
-    return snapshot.docs.map((doc) {
-      final data = doc.data();
-      return Appointment(
-        id: doc.id,
-        tenantId: data['tenantId'],
-        serviceId: data['serviceId'],
-        clientId: data['clientId'],
-        professionalId: data['professionalId'],
-        scheduledStart:
-        (data['scheduledStart'] as Timestamp).toDate(),
-        scheduledEnd:
-        (data['scheduledEnd'] as Timestamp).toDate(),
-        finalPrice: (data['finalPrice'] as num).toDouble(),
-        finalDuration: data['finalDuration'],
-        status: AppointmentStatus.values.firstWhere(
-              (e) => e.name == data['status'],
-        ),
-        createdAt:
-        (data['createdAt'] as Timestamp).toDate(),
-      );
-    }).toList();
+    return snapshot.docs
+        .map((doc) =>
+        AppointmentModel.fromMap(
+            doc.data(), doc.id))
+        .toList();
   }
 
+  // 🔥 NOVO: Solicitar reagendamento
+
   @override
-  Future<void> updateAppointment(Appointment appointment) async {
+  Future<void> requestReschedule({
+    required String appointmentId,
+    required DateTime proposedStart,
+    required DateTime proposedEnd,
+  }) async {
     await firestore
         .collection('appointments')
-        .doc(appointment.id)
+        .doc(appointmentId)
         .update({
-      'scheduledStart': appointment.scheduledStart,
-      'scheduledEnd': appointment.scheduledEnd,
-      'finalPrice': appointment.finalPrice,
-      'finalDuration': appointment.finalDuration,
-      'status': appointment.status.name,
+      'status':
+      AppointmentStatus
+          .rescheduleRequested
+          .name,
+      'proposedStart': proposedStart,
+      'proposedEnd': proposedEnd,
     });
+  }
+
+  // 🔥 NOVO: Confirmar reagendamento
+
+  @override
+  Future<void> confirmReschedule({
+    required String appointmentId,
+    required DateTime newStart,
+    required DateTime newEnd,
+  }) async {
+    await firestore
+        .collection('appointments')
+        .doc(appointmentId)
+        .update({
+      'scheduledStart': newStart,
+      'scheduledEnd': newEnd,
+      'status':
+      AppointmentStatus.approved.name,
+      'proposedStart': null,
+      'proposedEnd': null,
+    });
+  }
+  // 🔥 NOVO: Buscar pendentes do profissional
+
+  @override
+  Future<List<Appointment>> getPendingByProfessional(
+      String professionalId) async {
+
+    final snapshot = await firestore
+        .collection('appointments')
+        .where('professionalId',
+        isEqualTo: professionalId)
+        .where('status',
+        isEqualTo:
+        AppointmentStatus.pending.name)
+        .get();
+
+    return snapshot.docs
+        .map((doc) =>
+        AppointmentModel.fromMap(
+            doc.data(), doc.id))
+        .toList();
   }
 }

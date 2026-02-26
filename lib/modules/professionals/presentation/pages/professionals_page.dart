@@ -8,14 +8,19 @@ class ProfessionalsPage extends StatefulWidget {
   const ProfessionalsPage({super.key});
 
   @override
-  State<ProfessionalsPage> createState() => _ProfessionalsPageState();
+  State<ProfessionalsPage> createState() =>
+      _ProfessionalsPageState();
 }
 
-class _ProfessionalsPageState extends State<ProfessionalsPage> {
+class _ProfessionalsPageState
+    extends State<ProfessionalsPage> {
   final _professionalRemote =
   getIt<ProfessionalRemoteDataSource>();
 
-  final _nameController = TextEditingController();
+  final _nameController =
+  TextEditingController();
+  final _emailController =
+  TextEditingController(); // 🔥 NOVO
 
   int currentCount = 0;
   int maxAllowed = 0;
@@ -28,8 +33,10 @@ class _ProfessionalsPageState extends State<ProfessionalsPage> {
   }
 
   Future<void> _loadLimits() async {
-    currentPlan = await _professionalRemote.getCurrentPlan();
-    currentCount = await _professionalRemote.getCurrentCount();
+    currentPlan =
+    await _professionalRemote.getCurrentPlan();
+    currentCount =
+    await _professionalRemote.getCurrentCount();
     maxAllowed =
         PlanConfig.maxProfessionals(currentPlan);
 
@@ -38,25 +45,46 @@ class _ProfessionalsPageState extends State<ProfessionalsPage> {
 
   Future<void> _createProfessional() async {
     try {
+      final name =
+      _nameController.text.trim();
+      final email =
+      _emailController.text.trim();
+
+      if (name.isEmpty ||
+          email.isEmpty) {
+        throw Exception(
+            "Nome e email são obrigatórios.");
+      }
+
       await _professionalRemote
-          .createProfessional(_nameController.text.trim());
+          .createProfessional(
+        name: name,
+        email: email,
+      );
 
       _nameController.clear();
+      _emailController.clear();
+
       await _loadLimits();
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
         const SnackBar(
-            content: Text("Profissional criado")),
+          content:
+          Text("Convite enviado com sucesso"),
+        ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
         SnackBar(content: Text(e.toString())),
       );
     }
   }
 
   Future<void> _delete(String id) async {
-    await _professionalRemote.deleteProfessional(id);
+    await _professionalRemote
+        .deleteProfessional(id);
     await _loadLimits();
   }
 
@@ -70,63 +98,104 @@ class _ProfessionalsPageState extends State<ProfessionalsPage> {
         children: [
           const SizedBox(height: 10),
 
-          // 🔥 CONTADOR DE PLANO
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding:
+            const EdgeInsets.all(16),
             child: Text(
               "Plano: $currentPlan | $currentCount / $maxAllowed usados",
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  fontWeight:
+                  FontWeight.bold),
             ),
           ),
 
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+            padding:
+            const EdgeInsets.all(16),
+            child: Column(
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                        labelText: "Nome do Profissional"),
+                TextField(
+                  controller:
+                  _nameController,
+                  decoration:
+                  const InputDecoration(
+                    labelText:
+                    "Nome do Profissional",
                   ),
                 ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: _createProfessional,
-                  child: const Text("Adicionar"),
+                const SizedBox(height: 10),
+                TextField(
+                  controller:
+                  _emailController,
+                  decoration:
+                  const InputDecoration(
+                    labelText:
+                    "Email do Profissional",
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed:
+                    _createProfessional,
+                    child: const Text(
+                        "Enviar Convite"),
+                  ),
                 ),
               ],
             ),
           ),
 
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream:
-              _professionalRemote.streamProfessionals(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
+            child: StreamBuilder<
+                QuerySnapshot>(
+              stream: _professionalRemote
+                  .streamProfessionals(),
+              builder:
+                  (context, snapshot) {
+                if (!snapshot
+                    .hasData) {
                   return const Center(
-                      child: CircularProgressIndicator());
+                    child:
+                    CircularProgressIndicator(),
+                  );
                 }
 
-                final docs = snapshot.data!.docs;
+                final docs =
+                    snapshot.data!.docs;
 
                 if (docs.isEmpty) {
                   return const Center(
-                      child:
-                      Text("Nenhum profissional cadastrado"));
+                    child: Text(
+                        "Nenhum profissional cadastrado"),
+                  );
                 }
 
                 return ListView.builder(
-                  itemCount: docs.length,
-                  itemBuilder: (_, index) {
-                    final doc = docs[index];
+                  itemCount:
+                  docs.length,
+                  itemBuilder:
+                      (_, index) {
+                    final doc =
+                    docs[index];
 
                     return ListTile(
-                      title: Text(doc['name']),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () => _delete(doc.id),
+                      title:
+                      Text(doc['name']),
+                      subtitle: doc[
+                      'email'] !=
+                          null
+                          ? Text(
+                          doc['email'])
+                          : null,
+                      trailing:
+                      IconButton(
+                        icon: const Icon(
+                            Icons.delete),
+                        onPressed: () =>
+                            _delete(
+                                doc.id),
                       ),
                     );
                   },

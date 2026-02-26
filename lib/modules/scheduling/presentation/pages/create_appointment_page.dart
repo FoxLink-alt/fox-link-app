@@ -18,9 +18,15 @@ class CreateAppointmentPage extends StatefulWidget {
 
 class _CreateAppointmentPageState
     extends State<CreateAppointmentPage> {
-  final _useCase = GetIt.I<CreateAppointmentUseCase>();
-  final _availabilityRepo = GetIt.I<AvailabilityRepository>();
-  final _tenantSession = GetIt.I<TenantSession>();
+
+  final _useCase =
+  GetIt.I<CreateAppointmentUseCase>();
+
+  final _availabilityRepo =
+  GetIt.I<AvailabilityRepository>();
+
+  final _tenantSession =
+  GetIt.I<TenantSession>();
 
   DateTime? selectedDate;
   List<DateTime> availableSlots = [];
@@ -31,17 +37,19 @@ class _CreateAppointmentPageState
   Future<void> _loadSlots() async {
     if (selectedDate == null) return;
 
+    /// 🔥 CORREÇÃO AQUI
+    /// Agora getByProfessional recebe apenas professionalId
     final availabilityList =
     await _availabilityRepo.getByProfessional(
-      tenantId: _tenantSession.tenantId!,
-      professionalId: _tenantSession.uid!, // 🔥 profissional real depois ajustamos
+      _tenantSession.uid!, // profissional
     );
 
     final weekday = selectedDate!.weekday;
 
     final availability = availabilityList.firstWhere(
           (a) => a.weekday == weekday,
-      orElse: () => throw Exception("Profissional não atende nesse dia"),
+      orElse: () => throw Exception(
+          "Profissional não atende nesse dia"),
     );
 
     final slots = SlotGenerator.generateSlots(
@@ -63,9 +71,11 @@ class _CreateAppointmentPageState
     final appointment = Appointment(
       id: const Uuid().v4(),
       tenantId: _tenantSession.tenantId!,
-      serviceId: "service_1", // depois conectamos ao service real
+      serviceId:
+      "service_1", // depois ligamos ao service real
       clientId: _tenantSession.uid!,
-      professionalId: _tenantSession.uid!, // vamos melhorar com seleção de profissional
+      professionalId:
+      _tenantSession.uid!, // depois vamos selecionar profissional
       scheduledStart: selectedSlot!,
       scheduledEnd:
       selectedSlot!.add(const Duration(minutes: 60)),
@@ -78,13 +88,16 @@ class _CreateAppointmentPageState
     try {
       await _useCase(appointment);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Agendamento enviado para aprovação!"),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                "Agendamento enviado para aprovação!"),
+          ),
+        );
 
-      Navigator.pop(context);
+        Navigator.pop(context);
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString())),
@@ -97,36 +110,52 @@ class _CreateAppointmentPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Novo Agendamento")),
+      appBar:
+      AppBar(title: const Text("Novo Agendamento")),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding:
+        const EdgeInsets.all(16),
         child: Column(
           children: [
             ElevatedButton(
               onPressed: () async {
-                final date = await showDatePicker(
+                final date =
+                await showDatePicker(
                   context: context,
                   firstDate: DateTime.now(),
                   lastDate: DateTime(2100),
                 );
-                setState(() => selectedDate = date);
-                await _loadSlots();
+
+                if (date != null) {
+                  setState(() =>
+                  selectedDate = date);
+
+                  await _loadSlots();
+                }
               },
-              child: const Text("Selecionar Data"),
+              child: const Text(
+                  "Selecionar Data"),
             ),
+
             const SizedBox(height: 20),
 
             if (availableSlots.isNotEmpty)
               Expanded(
                 child: ListView.builder(
-                  itemCount: availableSlots.length,
-                  itemBuilder: (context, index) {
-                    final slot = availableSlots[index];
-                    final isSelected = selectedSlot == slot;
+                  itemCount:
+                  availableSlots.length,
+                  itemBuilder:
+                      (context, index) {
+                    final slot =
+                    availableSlots[index];
+
+                    final isSelected =
+                        selectedSlot == slot;
 
                     return Card(
                       color: isSelected
-                          ? Colors.green.shade100
+                          ? Colors.green
+                          .shade100
                           : null,
                       child: ListTile(
                         title: Text(
@@ -134,7 +163,8 @@ class _CreateAppointmentPageState
                         ),
                         onTap: () {
                           setState(() {
-                            selectedSlot = slot;
+                            selectedSlot =
+                                slot;
                           });
                         },
                       ),
@@ -146,12 +176,14 @@ class _CreateAppointmentPageState
             const SizedBox(height: 20),
 
             ElevatedButton(
-              onPressed: loading ? null : _createAppointment,
+              onPressed:
+              loading ? null : _createAppointment,
               child: loading
                   ? const CircularProgressIndicator(
                 color: Colors.white,
               )
-                  : const Text("Confirmar Agendamento"),
+                  : const Text(
+                  "Confirmar Agendamento"),
             ),
           ],
         ),

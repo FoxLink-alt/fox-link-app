@@ -6,6 +6,7 @@ enum AppointmentStatus {
   rejected,
   cancelled,
   completed,
+  rescheduleRequested, // 🔥 NOVO STATUS
 }
 
 class Appointment extends Equatable {
@@ -24,6 +25,10 @@ class Appointment extends Equatable {
   final AppointmentStatus status;
   final DateTime createdAt;
 
+  // 🔥 NOVOS CAMPOS PARA REAGENDAMENTO
+  final DateTime? proposedStart;
+  final DateTime? proposedEnd;
+
   const Appointment({
     required this.id,
     required this.tenantId,
@@ -36,10 +41,14 @@ class Appointment extends Equatable {
     required this.finalDuration,
     required this.status,
     required this.createdAt,
+    this.proposedStart, // 🔥 NOVO
+    this.proposedEnd,   // 🔥 NOVO
   });
 
   bool get isPending => status == AppointmentStatus.pending;
   bool get isApproved => status == AppointmentStatus.approved;
+  bool get isRescheduleRequested =>
+      status == AppointmentStatus.rescheduleRequested;
 
   Appointment approve({
     required double price,
@@ -52,11 +61,14 @@ class Appointment extends Equatable {
       clientId: clientId,
       professionalId: professionalId,
       scheduledStart: scheduledStart,
-      scheduledEnd: scheduledStart.add(Duration(minutes: duration)),
+      scheduledEnd:
+      scheduledStart.add(Duration(minutes: duration)),
       finalPrice: price,
       finalDuration: duration,
       status: AppointmentStatus.approved,
       createdAt: createdAt,
+      proposedStart: null, // 🔥 limpa proposta
+      proposedEnd: null,
     );
   }
 
@@ -66,6 +78,8 @@ class Appointment extends Equatable {
 
   Appointment copyWith({
     AppointmentStatus? status,
+    DateTime? proposedStart,
+    DateTime? proposedEnd,
   }) {
     return Appointment(
       id: id,
@@ -79,6 +93,10 @@ class Appointment extends Equatable {
       finalDuration: finalDuration,
       status: status ?? this.status,
       createdAt: createdAt,
+      proposedStart:
+      proposedStart ?? this.proposedStart,
+      proposedEnd:
+      proposedEnd ?? this.proposedEnd,
     );
   }
 
@@ -95,5 +113,7 @@ class Appointment extends Equatable {
     finalDuration,
     status,
     createdAt,
+    proposedStart, // 🔥 NOVO
+    proposedEnd,   // 🔥 NOVO
   ];
 }

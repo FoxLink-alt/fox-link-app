@@ -1,20 +1,24 @@
 import '../entities/appointment.dart';
 import '../repositories/scheduling_repository.dart';
 
-class CreateAppointmentUseCase {
+class ApproveAppointmentUseCase {
+
   final SchedulingRepository repository;
 
-  CreateAppointmentUseCase(this.repository);
+  ApproveAppointmentUseCase(this.repository);
 
   Future<void> call(Appointment appointment) async {
 
     final approved =
-    await repository.getApprovedByProfessionalAndDate(
-      professionalId: appointment.professionalId,
+    await repository
+        .getApprovedByProfessionalAndDate(
+      professionalId:
+      appointment.professionalId,
       date: appointment.scheduledStart,
     );
 
     for (final existing in approved) {
+
       final conflict =
           appointment.scheduledStart
               .isBefore(existing.scheduledEnd) &&
@@ -23,10 +27,14 @@ class CreateAppointmentUseCase {
 
       if (conflict) {
         throw Exception(
-            "Horário já ocupado.");
+          "Conflito de horário detectado.",
+        );
       }
     }
 
-    await repository.create(appointment);
+    await repository.updateStatus(
+      appointment.id,
+      AppointmentStatus.approved,
+    );
   }
 }

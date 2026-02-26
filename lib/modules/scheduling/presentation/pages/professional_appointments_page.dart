@@ -1,76 +1,169 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+import 'package:fox_link_app/core/session/tenant_session.dart';
 
-class ProfessionalAppointmentsPage extends StatelessWidget {
+import '../../domain/entities/appointment.dart';
+import '../../domain/repositories/scheduling_repository.dart';
+import '../../domain/usecases/approve_appointment_usecase.dart';
+import '../../domain/usecases/request_reschedule_usecase.dart';
+
+class ProfessionalAppointmentsPage extends StatefulWidget {
   const ProfessionalAppointmentsPage({super.key});
 
   @override
+  State<ProfessionalAppointmentsPage> createState() =>
+      _ProfessionalAppointmentsPageState();
+}
+
+class _ProfessionalAppointmentsPageState
+    extends State<ProfessionalAppointmentsPage> {
+
+  final _repository =
+  GetIt.I<SchedulingRepository>();
+
+  final _approveUseCase =
+  GetIt.I<ApproveAppointmentUseCase>();
+
+  final _rescheduleUseCase =
+  GetIt.I<RequestRescheduleUseCase>();
+
+  final _session =
+  GetIt.I<TenantSession>();
+
+  List<Appointment> pending = [];
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final list =
+    await _repository.getPendingByProfessional(
+      _session.uid!,
+    );
+
+    setState(() {
+      pending = list;
+      loading = false;
+    });
+  }
+
+  Future<void> _approve(Appointment a) async {
+    try {
+      await _approveUseCase(a);
+      await _load();
+    } catch (e) {
+      _showMessage(e.toString());
+    }
+  }
+
+  Future<void> _suggestNewTime(
+      Appointment appointment) async {
+
+    final date = await showDatePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+
+    if (date == null) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+
+    if (time == null) return;
+
+    final newStart = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+
+    final newEnd = newStart.add(
+      Duration(minutes: appointment.finalDuration),
+    );
+
+    await _rescheduleUseCase(
+      appointment: appointment,
+      newStart: newStart,
+      newEnd: newEnd,
+    );
+
+    await _load();
+  }
+
+  void _showMessage(String msg) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final firestore = FirebaseFirestore.instance;
-
     return Scaffold(
-      appBar: AppBar(title: const Text("Agendamentos Pendentes")),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: firestore
-            .collection('appointments')
-            .where('professionalId', isEqualTo: 'professional_1')
-            .where('status', isEqualTo: 'pending')
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(
-                child: CircularProgressIndicator());
-          }
+      appBar: AppBar(
+        title:
+        const Text("Agendamentos Pendentes"),
+      ),
+      body: loading
+          ? const Center(
+        child:
+        CircularProgressIndicator(),
+      )
+          : pending.isEmpty
+          ? const Center(
+        child:
+        Text("Nenhum pendente."),
+      )
+          : ListView.builder(
+        itemCount: pending.length,
+        itemBuilder: (context, index) {
+          final a = pending[index];
 
-          final docs = snapshot.data!.docs;
-
-          if (docs.isEmpty) {
-            return const Center(
-                child: Text("Nenhum agendamento pendente"));
-          }
-
-          return ListView.builder(
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final doc = docs[index];
-
-              return Card(
-                child: ListTile(
-                  title: Text("Cliente: ${doc['clientId']}"),
-                  subtitle: Text(
-                      "Valor: R\$ ${doc['finalPrice']}"),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.check,
-                            color: Colors.green),
-                        onPressed: () async {
-                          await firestore
-                              .collection('appointments')
-                              .doc(doc.id)
-                              .update({
-                            'status': 'approved'
-                          });
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close,
-                            color: Colors.red),
-                        onPressed: () async {
-                          await firestore
-                              .collection('appointments')
-                              .doc(doc.id)
-                              .update({
-                            'status': 'rejected'
-                          });
-                        },
-                      ),
-                    ],
+          return Card(
+            child: ListTile(
+              title: Text(
+                "${a.scheduledStart}",
+              ),
+              subtitle: Text(
+                "Cliente: ${a.clientId}",
+              ),
+              trailing: PopupMenuButton<
+                  String>(
+                onSelected: (value) {
+                  if (value ==
+                      "approve") {
+                    _approve(a);
+                  }
+                  if (value ==
+                      "reschedule") {
+                    _suggestNewTime(
+                        a);
+                  }
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: "approve",
+                    child: Text(
+                        "Aprovar"),
                   ),
-                ),
-              );
-            },
+                  const PopupMenuItem(
+                    value:
+                    "reschedule",
+                    child: Text(
+                        "Sugerir novo horário"),
+                  ),
+                ],
+              ),
+            ),
           );
         },
       ),
